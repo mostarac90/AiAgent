@@ -1,10 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.Agents.AI.Workflows;
 
-namespace AgentFlow.Agent.Workflows.Executors
+namespace AgentFlow.Agent.Workflows.Executors;
+
+public sealed class ApprovalDecisionExecutor()
+    : Executor<bool, string>(
+        "ApprovalDecision")
 {
-    internal class ApprovalDecisionExecutor
+    public override ValueTask<string> HandleAsync(
+        bool approved,
+        IWorkflowContext context,
+        CancellationToken cancellationToken = default)
     {
+        string message = approved
+            ? "Escalation approved. No ticket modification has been performed."
+            : "Escalation rejected. No further action required.";
+
+        return ValueTask.FromResult(message);
     }
 }

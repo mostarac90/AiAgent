@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="AgentFlow.Agent/AgentFlow.Agent.csproj" />
+  <Project Path="AgentFlow.Api/AgentFlow.Api.csproj" />
   <Project Path="AgentFlow.McpServer/AgentFlow.McpServer.csproj" />
 </Solution>
