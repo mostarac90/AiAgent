@@ -1,4 +1,6 @@
-﻿using ModelContextProtocol.Client;
+﻿using AgentFlow.Agent.Workflows;
+using Microsoft.Agents.AI.Workflows;
+using ModelContextProtocol.Client;
 using OpenAI.Chat;
 
 Console.WriteLine("Hello, World!");
@@ -69,13 +71,19 @@ var agentRunner = new AgentFlow.Agent.Agents.AgentRunner(
     options);
 
 
-var result = await agentRunner.InvestigateTicketAsync(
-    ticketId: 12345,
-    cancellationToken: CancellationToken.None);
+Workflow workFlow = TicketInvestigationWorkflow.Create(agentRunner);
 
+await using Run run = await InProcessExecution.RunAsync(workFlow, 1042);
 
-Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(
-    result,
-    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+foreach(WorkflowEvent e in run.NewEvents)
+{
+
+    if(e is ExecutorCompletedEvent completedEvent)
+    {
+        Console.WriteLine(
+             $"Executor completed: {completedEvent.ExecutorId}");
+
+    }
+}
 
 Console.Read();

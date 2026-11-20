@@ -7,10 +7,8 @@ namespace AgentFlow.Agent.Agents
 {
     public sealed class AgentRunner
     {
-
         private readonly ChatClient _chatClient;
-        private readonly McpClient mcpClient;
-
+        private readonly McpClient _mcpClient;
         private readonly ChatCompletionOptions _options;
 
         private const int MaxIterations = 10;
@@ -23,31 +21,30 @@ namespace AgentFlow.Agent.Agents
         ];
 
         public AgentRunner(
-        ChatClient chatClient,
-        McpClient mcpClient1,
-        ChatCompletionOptions options)
+            ChatClient chatClient,
+            McpClient mcpClient,
+            ChatCompletionOptions options)
         {
             _chatClient = chatClient;
-            this.mcpClient = mcpClient1;
+            _mcpClient = mcpClient;
             _options = options;
         }
 
-
         public async Task<TicketInvestigationResult> InvestigateTicketAsync(
-        int ticketId,
-        CancellationToken cancellationToken = default)
+            int ticketId,
+            CancellationToken cancellationToken = default)
         {
             var prompt = $"""
-        Investigate ticket {ticketId} using available MCP tools.
+                Investigate ticket {ticketId} using available MCP tools.
 
-        Retrieve ticket details, customer information,
-        and relevant knowledge-base articles.
+                Retrieve ticket details, customer information,
+                and relevant knowledge-base articles.
 
-        Return only JSON containing:
-        ticketId, customer, severity, issue,
-        possibleCauses, recommendedActions,
-        requiresEscalation.
-        """;
+                Return only JSON containing:
+                ticketId, customer, severity, issue,
+                possibleCauses, recommendedActions,
+                requiresEscalation.
+                """;
 
             string response = await RunAsync(prompt, cancellationToken);
 
@@ -61,20 +58,19 @@ namespace AgentFlow.Agent.Agents
                     "Failed to deserialize investigation result.");
         }
 
-
         public async Task<string> RunAsync(
-        string userPrompt,
-        CancellationToken cancellationToken = default)
+            string userPrompt,
+            CancellationToken cancellationToken = default)
         {
             var messages = new List<ChatMessage>
-        {
-            new SystemChatMessage(
-                "You are a support assistant. " +
-                "Investigate tickets using available MCP tools. " +
-                "Do not modify any tickets."),
+            {
+                new SystemChatMessage(
+                    "You are a support assistant. " +
+                    "Investigate tickets using available MCP tools. " +
+                    "Do not modify any tickets."),
 
-            new UserChatMessage(userPrompt)
-        };
+                new UserChatMessage(userPrompt)
+            };
 
             for (int round = 0; round < MaxIterations; round++)
             {
@@ -98,16 +94,17 @@ namespace AgentFlow.Agent.Agents
 
                         foreach (var toolCall in completion.ToolCalls)
                         {
-
-                            if (AllowedTools.FirstOrDefault(x => x == toolCall.FunctionName) is null)
+                            if (!AllowedTools.Contains(toolCall.FunctionName))
                             {
                                 throw new InvalidOperationException(
                                     $"Tool {toolCall.FunctionName} is not allowed.");
                             }
 
-                            var toolResult = await ExecuteMcpToolAsync(toolCall, cancellationToken);
+                            var toolResult = await ExecuteMcpToolAsync(
+                                toolCall,
+                                cancellationToken);
 
-                            // Extract text from the MCP response.
+                            // Feed the extracted MCP text back to the model.
                             messages.Add(
                                 new ToolChatMessage(
                                     toolCall.Id,
@@ -118,8 +115,7 @@ namespace AgentFlow.Agent.Agents
 
                     default:
                         throw new InvalidOperationException(
-                            $"Unexpected finish reason: " +
-                            $"{completion.FinishReason}");
+                            $"Unexpected finish reason: {completion.FinishReason}");
                 }
             }
 
@@ -131,7 +127,6 @@ namespace AgentFlow.Agent.Agents
             ChatToolCall toolCall,
             CancellationToken cancellationToken)
         {
-
             Console.WriteLine($"Executing: {toolCall.FunctionName}");
 
             var arguments = JsonSerializer.Deserialize<
@@ -145,7 +140,7 @@ namespace AgentFlow.Agent.Agents
             }
 
             // Execute the actual MCP server tool.
-            var result = await mcpClient.CallToolAsync(
+            var result = await _mcpClient.CallToolAsync(
                 toolCall.FunctionName,
                 arguments);
 
@@ -161,7 +156,6 @@ namespace AgentFlow.Agent.Agents
             }
 
             return output;
-
         }
     }
 }
