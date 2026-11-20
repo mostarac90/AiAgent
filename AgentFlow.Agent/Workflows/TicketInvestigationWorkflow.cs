@@ -8,12 +8,17 @@ namespace AgentFlow.Agent.Workflows;
 
 public static class TicketInvestigationWorkflow
 {
+
     public static Workflow Create(AgentRunner agent)
     {
         var investigation = new InvestigationExecutor(agent);
         var classification = new ClassificationExecutor();
 
-        var approval = new ApprovalPendingExecutor();
+        var approvalPort =
+            RequestPort.Create<TicketInvestigationResult, bool>(
+                "TicketApproval");
+
+        var decision = new ApprovalDecisionExecutor();
         var report = new ReportExecutor();
 
         // The workflow is the following: 
@@ -21,25 +26,26 @@ public static class TicketInvestigationWorkflow
         // 2. Classify the ticket
         // 3. If the ticket is high severity, send it for approval
         // 4. If the ticket is not high severity, generate a report
-        
-        return new WorkflowBuilder(investigation)
-          .AddEdge(investigation, classification)
 
-          .AddEdge<TicketInvestigationResult>(
+        return new WorkflowBuilder(investigation)
+
+            .AddEdge(investigation, classification)
+
+            .AddEdge<TicketInvestigationResult>(
                 classification,
-                approval,
-                result => result is not null &&
-                          result.RequiresEscalation)
+                approvalPort,
+                result => result.RequiresEscalation)
 
             .AddEdge<TicketInvestigationResult>(
                 classification,
                 report,
-                result => result is not null &&
-                          !result.RequiresEscalation)
+                result => !result.RequiresEscalation)
 
-            .WithOutputFrom(approval)
+            .AddEdge(approvalPort, decision)
+
+            .WithOutputFrom(decision)
             .WithOutputFrom(report)
-            .Build();
 
+            .Build();
     }
-}
+    }

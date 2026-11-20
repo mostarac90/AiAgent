@@ -1,4 +1,5 @@
-﻿using AgentFlow.Agent.Workflows;
+﻿using AgentFlow.Agent.Models;
+using AgentFlow.Agent.Workflows;
 using Microsoft.Agents.AI.Workflows;
 using ModelContextProtocol.Client;
 using OpenAI.Chat;
@@ -71,19 +72,66 @@ var agentRunner = new AgentFlow.Agent.Agents.AgentRunner(
     options);
 
 
-Workflow workFlow = TicketInvestigationWorkflow.Create(agentRunner);
+Workflow workflow =
+    TicketInvestigationWorkflow.Create(agentRunner);
 
-await using Run run = await InProcessExecution.RunAsync(workFlow, 1042);
+await using StreamingRun run =
+    await InProcessExecution.RunStreamingAsync(
+        workflow,
+        1042);
 
-foreach(WorkflowEvent e in run.NewEvents)
+await foreach (WorkflowEvent evt in run.WatchStreamAsync())
 {
-
-    if(e is ExecutorCompletedEvent completedEvent)
+    switch (evt)
     {
-        Console.WriteLine(
-             $"Executor completed: {completedEvent.ExecutorId}");
+        case RequestInfoEvent requestEvent:
 
+            if (!requestEvent.Request.TryGetDataAs<TicketInvestigationResult>(
+                    out var investigation))
+            {
+                throw new InvalidOperationException(
+                    "Unexpected approval request payload.");
+            }
+
+            Console.WriteLine("\nAPPROVAL REQUIRED");
+            Console.WriteLine($"Ticket: {investigation.TicketId}");
+            Console.WriteLine($"Customer: {investigation.Customer}");
+            Console.WriteLine($"Severity: {investigation.Severity}");
+            Console.WriteLine($"Issue: {investigation.Issue}");
+
+            Console.Write("Approve escalation? (yes/no): ");
+
+            string? input = Console.ReadLine();
+
+            bool approved = string.Equals(
+                input?.Trim(),
+                "yes",
+                StringComparison.OrdinalIgnoreCase);
+
+            ExternalResponse response =
+                requestEvent.Request.CreateResponse(approved);
+
+            await run.SendResponseAsync(response);
+
+            break;
+
+        case WorkflowOutputEvent output:
+            Console.WriteLine("\nWORKFLOW COMPLETED");
+            Console.WriteLine(output.Data);
+            return;
+
+        case WorkflowErrorEvent error:
+            Console.Error.WriteLine(
+                error.Exception?.ToString()
+                ?? "Unknown workflow error.");
+            return;
+
+        case ExecutorFailedEvent failed:
+            Console.Error.WriteLine(
+                $"Executor {failed.ExecutorId} failed: {failed.Data}");
+            return;
     }
+
 }
 
 Console.Read();
