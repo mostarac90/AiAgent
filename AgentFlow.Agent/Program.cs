@@ -69,37 +69,13 @@ var agentRunner = new AgentFlow.Agent.Agents.AgentRunner(
     options);
 
 
-var ticketId = 12345;
-
-var prompt = $"""
-    Investigate ticket with {ticketId} using the available tools.
-
-    Retrieve:
-    - Ticket information
-    - Customer information
-    - Relevant knowledge-base articles
-
-    Determine the likely causes and recommend next steps.
-
-    Return only a JSON object with these properties:
-    ticketId, customer, severity, issue,
-    possibleCauses, recommendedActions,
-    requiresEscalation.
-
-    Do not invent facts. Treat possible causes as hypotheses.
-    """;
-
-var result = await agentRunner.RunAsync(
-    prompt,
-    CancellationToken.None);
+var result = await agentRunner.InvestigateTicketAsync(
+    ticketId: 12345,
+    cancellationToken: CancellationToken.None);
 
 
-// Deserialize the result into a TicketInvestigationResult object
-var ticketInvestigationResult = System.Text.Json.JsonSerializer.Deserialize<AgentFlow.Agent.Models.TicketInvestigationResult>(result);
-
-
-Console.WriteLine(ticketInvestigationResult); 
-
-Console.Write(result); 
+Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(
+    result,
+    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
 Console.Read();

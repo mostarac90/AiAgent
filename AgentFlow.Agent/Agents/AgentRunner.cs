@@ -1,4 +1,5 @@
-﻿using ModelContextProtocol.Client;
+﻿using AgentFlow.Agent.Models;
+using ModelContextProtocol.Client;
 using OpenAI.Chat;
 using System.Text.Json;
 
@@ -30,6 +31,36 @@ namespace AgentFlow.Agent.Agents
             this.mcpClient = mcpClient1;
             _options = options;
         }
+
+
+        public async Task<TicketInvestigationResult> InvestigateTicketAsync(
+        int ticketId,
+        CancellationToken cancellationToken = default)
+        {
+            var prompt = $"""
+        Investigate ticket {ticketId} using available MCP tools.
+
+        Retrieve ticket details, customer information,
+        and relevant knowledge-base articles.
+
+        Return only JSON containing:
+        ticketId, customer, severity, issue,
+        possibleCauses, recommendedActions,
+        requiresEscalation.
+        """;
+
+            string response = await RunAsync(prompt, cancellationToken);
+
+            return JsonSerializer.Deserialize<TicketInvestigationResult>(
+                response,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                })
+                ?? throw new InvalidOperationException(
+                    "Failed to deserialize investigation result.");
+        }
+
 
         public async Task<string> RunAsync(
         string userPrompt,
@@ -67,8 +98,8 @@ namespace AgentFlow.Agent.Agents
 
                         foreach (var toolCall in completion.ToolCalls)
                         {
-                          
-                            if(AllowedTools.FirstOrDefault(x => x == toolCall.FunctionName) is null)
+
+                            if (AllowedTools.FirstOrDefault(x => x == toolCall.FunctionName) is null)
                             {
                                 throw new InvalidOperationException(
                                     $"Tool {toolCall.FunctionName} is not allowed.");
