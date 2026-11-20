@@ -75,13 +75,18 @@ var agentRunner = new AgentFlow.Agent.Agents.AgentRunner(
 Workflow workflow =
     TicketInvestigationWorkflow.Create(agentRunner);
 
+var checkpointManager = CheckpointManager.Default;
+
 await using StreamingRun run =
     await InProcessExecution.RunStreamingAsync(
         workflow,
-        1042);
+        1042,
+        checkpointManager);
 
 await foreach (WorkflowEvent evt in run.WatchStreamAsync())
 {
+    var checkpoints = new List<CheckpointInfo>();
+
     switch (evt)
     {
         case RequestInfoEvent requestEvent:
@@ -130,6 +135,21 @@ await foreach (WorkflowEvent evt in run.WatchStreamAsync())
             Console.Error.WriteLine(
                 $"Executor {failed.ExecutorId} failed: {failed.Data}");
             return;
+
+        case SuperStepCompletedEvent completed:
+
+            CheckpointInfo? checkpoint =
+                completed.CompletionInfo?.Checkpoint;
+
+            if (checkpoint is not null)
+            {
+                checkpoints.Add(checkpoint);
+
+                Console.WriteLine(
+                    $"Checkpoint created: {checkpoints.Count}");
+            }
+
+            break;
     }
 
 }
