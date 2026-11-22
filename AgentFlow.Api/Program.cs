@@ -1,41 +1,127 @@
+
+using AgentFlow.Agent.Agents;
+using AgentFlow.Api.Investigations;
+using System.Collections.Concurrent;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddSingleton(await TicketInvestigationAgent.CreateAsync());
+
+builder.Services.AddSingleton<
+    ConcurrentDictionary<Guid, InvestigationSession>>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapGet("/api/health", () =>
 {
-    app.MapOpenApi();
-}
+    return Results.Ok(new
+    {
+        Status = "Healthy",
+        Service = "AgentFlow.Api",
+        Timestamp = DateTimeOffset.UtcNow
+    });
+});
 
-app.UseHttpsRedirection();
+app.MapPost("/api/investigations/validate",
+    (CreateInvestigationRequest request) =>
+    {
+        if (request.TicketId <= 0)
+        {
+            return Results.BadRequest(new
+            {
+                Error = "TicketId must be greater than zero."
+            });
+        }
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+        return Results.Ok(new
+        {
+            Valid = true,
+            TicketId = request.TicketId,
+            Message = "Request validated successfully."
+        });
+    });
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+
+// Start an investigation
+app.MapPost("/api/investigations",
+    (
+        CreateInvestigationRequest request,
+        TicketInvestigationAgent agent,
+        ConcurrentDictionary<Guid, InvestigationSession> sessions) =>
+    {
+        if (request.TicketId <= 0)
+        {
+            return Results.BadRequest(
+                "TicketId must be greater than zero.");
+        }
+
+        var session = new InvestigationSession();
+
+        sessions.TryAdd(session.Id, session);
+
+        // Execute without blocking the HTTP response.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await agent.RunAsync(
+                    request.TicketId,
+                    investigation =>
+                        session.WaitForApprovalAsync(investigation));
+
+                session.Complete(result);
+            }
+            catch (Exception ex)
+            {
+                session.Fail(ex);
+            }
+        });
+
+        return Results.Accepted(
+            $"/api/investigations/{session.Id}",
+            new
+            {
+                session.Id,
+                Status = "Running"
+            });
+    });
+
+// Get investigation status
+app.MapGet("/api/investigations/{id:guid}",
+    (
+        Guid id,
+        ConcurrentDictionary<Guid, InvestigationSession> sessions) =>
+    {
+        if (!sessions.TryGetValue(id, out var session))
+            return Results.NotFound();
+
+        return Results.Ok(session.GetStatus());
+    });
+
+// Approve or reject escalation
+app.MapPost("/api/investigations/{id:guid}/approval",
+    (
+        Guid id,
+        ApprovalRequest request,
+        ConcurrentDictionary<Guid, InvestigationSession> sessions) =>
+    {
+        if (!sessions.TryGetValue(id, out var session))
+            return Results.NotFound();
+
+        if (!session.TryRespond(request.Approved))
+        {
+            return Results.Conflict(
+                "No approval is currently pending.");
+        }
+
+        return Results.Ok(new
+        {
+            Message = "Approval decision submitted.",
+            Approved = request.Approved
+        });
+    });
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public record CreateInvestigationRequest(int TicketId);
+public record ApprovalRequest(bool Approved);
