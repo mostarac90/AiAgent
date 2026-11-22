@@ -34,16 +34,23 @@ namespace AgentFlow.Agent.Agents
             int ticketId,
             CancellationToken cancellationToken = default)
         {
-            var prompt = $"""
-                Investigate ticket {ticketId} using available MCP tools.
+            var prompt = $$"""
+                Investigate ticket {{ticketId}} using available MCP tools.
 
                 Retrieve ticket details, customer information,
                 and relevant knowledge-base articles.
 
-                Return only JSON containing:
-                ticketId, customer, severity, issue,
-                possibleCauses, recommendedActions,
-                requiresEscalation.
+                Return only raw JSON (no markdown, no code fences)
+                matching exactly this schema:
+                {
+                  "ticketId": <integer>,
+                  "customer": "<customer name as a plain string>",
+                  "severity": "<string>",
+                  "issue": "<string>",
+                  "possibleCauses": ["<string>", ...],
+                  "recommendedActions": ["<string>", ...],
+                  "requiresEscalation": <true|false>
+                }
                 """;
 
             string response = await RunAsync(prompt, cancellationToken);
