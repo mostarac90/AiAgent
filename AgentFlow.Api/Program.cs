@@ -8,7 +8,27 @@ builder.Services.AddSingleton(await TicketInvestigationAgent.CreateAsync());
 builder.Services.AddSingleton<InvestigationService>();
 builder.Services.AddOpenApi();
 
+var frontendUrl = builder.Configuration["FrontendUrl"];
+
+if (string.IsNullOrWhiteSpace(frontendUrl))
+{
+    throw new InvalidOperationException(
+        "FrontendUrl configuration is missing.");
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy.WithOrigins(frontendUrl.TrimEnd('/'))
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("Frontend");
 
 if (app.Environment.IsDevelopment())
 {
