@@ -1,5 +1,5 @@
 ﻿
-namespace AgentFlow.Api.Investigations;
+namespace AgentFlow.Api.Services;
 
 public sealed class InvestigationSession
 {
