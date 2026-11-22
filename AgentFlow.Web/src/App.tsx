@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { ApprovalPanel } from './components/ApprovalPanel';
 import { FindingsCard } from './components/FindingsCard';
+import { HowItWorks } from './components/HowItWorks';
 import { InvestigationList } from './components/InvestigationList';
 import { ProgressTimeline } from './components/ProgressTimeline';
 import type { Investigation } from './types/investigation';
@@ -76,7 +77,15 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white p-8 flex flex-col">
-      <div className="max-w-3xl w-full mx-auto space-y-6 flex-1">
+      {/* Wide screens: tutorial sits in a right-hand sidebar so the main column stays centred. */}
+      <div className="w-full flex-1 xl:grid xl:grid-cols-[1fr_minmax(0,42rem)_1fr] xl:gap-8">
+      <aside className="hidden xl:block xl:col-start-3 xl:row-start-1">
+        <div className="sticky top-8 max-w-xs">
+          <HowItWorks variant="sidebar" />
+        </div>
+      </aside>
+
+      <div className="max-w-3xl w-full mx-auto space-y-6 xl:col-start-2 xl:row-start-1">
         <header>
           <h1 className="text-4xl font-bold">
             AgentFlow
@@ -85,6 +94,10 @@ export default function App() {
             AI-powered ticket investigation
           </p>
         </header>
+
+        <div className="xl:hidden">
+          <HowItWorks />
+        </div>
 
         <section className="bg-slate-900 rounded-xl p-6">
           <h2 className="text-xl font-semibold mb-4">
@@ -213,6 +226,7 @@ export default function App() {
             )}
           </section>
         )}
+      </div>
       </div>
 
       <footer className="mt-12 pt-6 border-t border-slate-800 text-center text-sm text-slate-500">
