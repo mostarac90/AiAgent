@@ -118,9 +118,10 @@ public sealed class TicketInvestigationAgent : IAsyncDisposable
         int ticketId,
         Func<TicketInvestigationResult, Task<bool>> requestApproval,
         Action<CheckpointInfo>? onCheckpoint = null,
+        IInvestigationObserver? observer = null,
         CancellationToken cancellationToken = default)
     {
-        Workflow workflow = TicketInvestigationWorkflow.Create(_agentRunner);
+        Workflow workflow = TicketInvestigationWorkflow.Create(_agentRunner, observer);
 
         await using StreamingRun run = await InProcessExecution.RunStreamingAsync(
             workflow,
@@ -142,7 +143,8 @@ public sealed class TicketInvestigationAgent : IAsyncDisposable
 
                     bool approved = await requestApproval(investigation);
                     await run.SendResponseAsync(
-                        requestEvent.Request.CreateResponse(approved));
+                        requestEvent.Request.CreateResponse(
+                            new ApprovalDecision(investigation, approved)));
                     break;
 
                 case WorkflowOutputEvent output:

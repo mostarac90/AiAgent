@@ -1,4 +1,4 @@
-﻿namespace AgentFlow.Agent.Models
+namespace AgentFlow.Agent.Models
 {
     public sealed class TicketInvestigationResult
     {
@@ -15,5 +15,11 @@
         public List<string> RecommendedActions { get; set; } = [];
 
         public bool RequiresEscalation { get; set; }
+
+        /// <summary>Why a human needs to approve the escalation (empty when no escalation is needed).</summary>
+        public string EscalationReason { get; set; } = string.Empty;
+
+        /// <summary>What approving the escalation would mean (empty when no escalation is needed).</summary>
+        public string ProposedAction { get; set; } = string.Empty;
     }
 }

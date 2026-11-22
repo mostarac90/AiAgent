@@ -1,10 +1,10 @@
-﻿
+using AgentFlow.Agent.Agents;
 using AgentFlow.Agent.Models;
 using Microsoft.Agents.AI.Workflows;
 
 namespace AgentFlow.Agent.Workflows.Executors;
 
-public sealed class ReportExecutor()
+public sealed class ReportExecutor(IInvestigationObserver? observer = null)
     : Executor<TicketInvestigationResult, string>(
         "Report")
 {
@@ -13,20 +13,11 @@ public sealed class ReportExecutor()
         IWorkflowContext context,
         CancellationToken cancellationToken = default)
     {
-        string report = $"""
-            TICKET INVESTIGATION REPORT
+        observer?.OnStep("Final report generated");
 
-            Ticket: {investigation.TicketId}
-            Customer: {investigation.Customer}
-            Severity: {investigation.Severity}
-            Issue: {investigation.Issue}
-
-            Recommended actions:
-            {string.Join(
-                Environment.NewLine,
-                investigation.RecommendedActions)}
-            """;
-
-        return ValueTask.FromResult(report);
+        return ValueTask.FromResult(
+            InvestigationReport.Format(
+                investigation,
+                "No escalation needed. Report completed automatically."));
     }
 }

@@ -20,7 +20,7 @@ export async function createInvestigation(
   return response.data;
 }
 
-export async function getActiveInvestigations(): Promise<
+export async function getInvestigations(): Promise<
   Investigation[]
 > {
   const response = await apiClient.get<Investigation[]>(

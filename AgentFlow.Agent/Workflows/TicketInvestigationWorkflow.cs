@@ -1,4 +1,3 @@
-﻿
 using AgentFlow.Agent.Agents;
 using AgentFlow.Agent.Models;
 using AgentFlow.Agent.Workflows.Executors;
@@ -8,24 +7,25 @@ namespace AgentFlow.Agent.Workflows;
 
 public static class TicketInvestigationWorkflow
 {
-
-    public static Workflow Create(AgentRunner agent)
+    public static Workflow Create(
+        AgentRunner agent,
+        IInvestigationObserver? observer = null)
     {
-        var investigation = new InvestigationExecutor(agent);
-        var classification = new ClassificationExecutor();
+        var investigation = new InvestigationExecutor(agent, observer);
+        var classification = new ClassificationExecutor(observer);
 
         var approvalPort =
-            RequestPort.Create<TicketInvestigationResult, bool>(
+            RequestPort.Create<TicketInvestigationResult, ApprovalDecision>(
                 "TicketApproval");
 
-        var decision = new ApprovalDecisionExecutor();
-        var report = new ReportExecutor();
+        var decision = new ApprovalDecisionExecutor(observer);
+        var report = new ReportExecutor(observer);
 
-        // The workflow is the following: 
+        // The workflow is the following:
         // 1. Investigate the ticket
         // 2. Classify the ticket
-        // 3. If the ticket is high severity, send it for approval
-        // 4. If the ticket is not high severity, generate a report
+        // 3. If escalation is recommended, ask a human for approval
+        // 4. Otherwise, generate a report directly
 
         return new WorkflowBuilder(investigation)
 
@@ -48,4 +48,4 @@ public static class TicketInvestigationWorkflow
 
             .Build();
     }
-    }
+}

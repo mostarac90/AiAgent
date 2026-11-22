@@ -50,9 +50,9 @@ public static class InvestigationEndpoints
                 });
         });
 
-        // List active investigations (running or waiting for approval)
+        // List active investigations plus recently finished ones
         group.MapGet("/", (InvestigationService investigations) =>
-            Results.Ok(investigations.GetActive()
+            Results.Ok(investigations.GetRecent()
                 .Select(s => s.GetStatus())));
 
         // Get investigation status

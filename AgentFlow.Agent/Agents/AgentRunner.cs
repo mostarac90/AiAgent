@@ -32,6 +32,7 @@ namespace AgentFlow.Agent.Agents
 
         public async Task<TicketInvestigationResult> InvestigateTicketAsync(
             int ticketId,
+            IInvestigationObserver? observer = null,
             CancellationToken cancellationToken = default)
         {
             var prompt = $$"""
@@ -49,11 +50,24 @@ namespace AgentFlow.Agent.Agents
                   "issue": "<string>",
                   "possibleCauses": ["<string>", ...],
                   "recommendedActions": ["<string>", ...],
-                  "requiresEscalation": <true|false>
+                  "requiresEscalation": <true|false>,
+                  "escalationReason": "<string>",
+                  "proposedAction": "<string>"
                 }
+
+                If requiresEscalation is true:
+                - escalationReason must explain in one or two plain sentences
+                  why a human needs to approve this. Name the concrete facts
+                  you found (e.g. customer tier or SLA, severity, business
+                  impact, no known fix in the knowledge base).
+                - proposedAction must say what approving would mean,
+                  e.g. "Escalate to on-call engineering as a P1 incident".
+                If requiresEscalation is false, use empty strings for both.
                 """;
 
-            string response = await RunAsync(prompt, cancellationToken);
+            string response = await RunAsync(prompt, observer, cancellationToken);
+
+            observer?.OnStep("Analysed findings");
 
             return JsonSerializer.Deserialize<TicketInvestigationResult>(
                 response,
@@ -67,6 +81,7 @@ namespace AgentFlow.Agent.Agents
 
         public async Task<string> RunAsync(
             string userPrompt,
+            IInvestigationObserver? observer = null,
             CancellationToken cancellationToken = default)
         {
             var messages = new List<ChatMessage>
@@ -109,6 +124,7 @@ namespace AgentFlow.Agent.Agents
 
                             var toolResult = await ExecuteMcpToolAsync(
                                 toolCall,
+                                observer,
                                 cancellationToken);
 
                             // Feed the extracted MCP text back to the model.
@@ -132,6 +148,7 @@ namespace AgentFlow.Agent.Agents
 
         private async Task<string> ExecuteMcpToolAsync(
             ChatToolCall toolCall,
+            IInvestigationObserver? observer,
             CancellationToken cancellationToken)
         {
             Console.WriteLine($"Executing: {toolCall.FunctionName}");
@@ -145,6 +162,8 @@ namespace AgentFlow.Agent.Agents
                 throw new InvalidOperationException(
                     "Tool arguments are invalid.");
             }
+
+            observer?.OnStep(DescribeToolCall(toolCall.FunctionName, arguments));
 
             // Execute the actual MCP server tool.
             var result = await _mcpClient.CallToolAsync(
@@ -163,6 +182,32 @@ namespace AgentFlow.Agent.Agents
             }
 
             return output;
+        }
+
+        private static string DescribeToolCall(
+            string toolName,
+            Dictionary<string, object?> arguments)
+        {
+            const int MaxLength = 60;
+
+            string Arg(string name)
+            {
+                var text = arguments.TryGetValue(name, out var value)
+                    ? value?.ToString() ?? string.Empty
+                    : string.Empty;
+
+                return text.Length > MaxLength
+                    ? text[..MaxLength].TrimEnd() + "…"
+                    : text;
+            }
+
+            return toolName switch
+            {
+                "GetTicket" => $"Fetched ticket #{Arg("ticketId")}",
+                "GetCustomer" => $"Looked up customer \"{Arg("name")}\"",
+                "SearchKnowledgeBase" => $"Searched knowledge base for \"{Arg("query")}\"",
+                _ => $"Called {toolName}"
+            };
         }
     }
 }

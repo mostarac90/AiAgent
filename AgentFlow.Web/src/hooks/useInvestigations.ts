@@ -7,12 +7,12 @@ import {
 
 import {
   createInvestigation,
-  getActiveInvestigations,
+  getInvestigations,
   getInvestigation,
   submitApproval,
 } from '../api/investigations';
 
-const activeInvestigationsKey = ['investigations', 'active'];
+const investigationListKey = ['investigations', 'list'];
 
 export function useCreateInvestigation() {
   const queryClient = useQueryClient();
@@ -22,16 +22,16 @@ export function useCreateInvestigation() {
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: activeInvestigationsKey,
+        queryKey: investigationListKey,
       });
     },
   });
 }
 
-export function useActiveInvestigations() {
+export function useInvestigationList() {
   return useQuery({
-    queryKey: activeInvestigationsKey,
-    queryFn: getActiveInvestigations,
+    queryKey: investigationListKey,
+    queryFn: getInvestigations,
     refetchInterval: 3000,
   });
 }
@@ -73,7 +73,7 @@ export function useSubmitApproval(investigationId: string) {
           queryKey: ['investigation', investigationId],
         }),
         queryClient.invalidateQueries({
-          queryKey: activeInvestigationsKey,
+          queryKey: investigationListKey,
         }),
       ]);
     },

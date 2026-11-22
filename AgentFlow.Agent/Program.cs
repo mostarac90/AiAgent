@@ -24,6 +24,8 @@ try
             Console.WriteLine($"Customer: {investigation.Customer}");
             Console.WriteLine($"Severity: {investigation.Severity}");
             Console.WriteLine($"Issue: {investigation.Issue}");
+            Console.WriteLine($"Why: {investigation.EscalationReason}");
+            Console.WriteLine($"If approved: {investigation.ProposedAction}");
             Console.Write("Approve escalation? (yes/no): ");
 
             bool approved = string.Equals(

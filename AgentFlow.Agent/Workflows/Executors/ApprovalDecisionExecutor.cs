@@ -1,20 +1,25 @@
-﻿using Microsoft.Agents.AI.Workflows;
+using AgentFlow.Agent.Agents;
+using AgentFlow.Agent.Models;
+using Microsoft.Agents.AI.Workflows;
 
 namespace AgentFlow.Agent.Workflows.Executors;
 
-public sealed class ApprovalDecisionExecutor()
-    : Executor<bool, string>(
+public sealed class ApprovalDecisionExecutor(IInvestigationObserver? observer = null)
+    : Executor<ApprovalDecision, string>(
         "ApprovalDecision")
 {
     public override ValueTask<string> HandleAsync(
-        bool approved,
+        ApprovalDecision decision,
         IWorkflowContext context,
         CancellationToken cancellationToken = default)
     {
-        string message = approved
-            ? "Escalation approved. No ticket modification has been performed."
-            : "Escalation rejected. No further action required.";
+        string outcome = decision.Approved
+            ? "Escalation approved by a human. No ticket modification has been performed."
+            : "Escalation rejected by a human. No further action required.";
 
-        return ValueTask.FromResult(message);
+        observer?.OnStep("Final report generated");
+
+        return ValueTask.FromResult(
+            InvestigationReport.Format(decision.Investigation, outcome));
     }
 }

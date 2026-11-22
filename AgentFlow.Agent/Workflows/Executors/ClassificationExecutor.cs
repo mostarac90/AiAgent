@@ -1,10 +1,10 @@
-﻿
+using AgentFlow.Agent.Agents;
 using AgentFlow.Agent.Models;
 using Microsoft.Agents.AI.Workflows;
 
 namespace AgentFlow.Agent.Workflows.Executors;
 
-public sealed class ClassificationExecutor()
+public sealed class ClassificationExecutor(IInvestigationObserver? observer = null)
     : Executor<TicketInvestigationResult, TicketInvestigationResult>(
         "Classification")
 {
@@ -18,6 +18,11 @@ public sealed class ClassificationExecutor()
 
         Console.WriteLine(
             $"Requires escalation: {investigation.RequiresEscalation}");
+
+        observer?.OnFindings(investigation);
+        observer?.OnStep(investigation.RequiresEscalation
+            ? $"Classified as {investigation.Severity} severity: escalation recommended"
+            : $"Classified as {investigation.Severity} severity: no escalation needed");
 
         return ValueTask.FromResult(investigation);
     }

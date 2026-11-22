@@ -1,18 +1,29 @@
-﻿
+using AgentFlow.Agent.Agents;
+using AgentFlow.Agent.Models;
+
 namespace AgentFlow.Api.Services;
 
-public sealed class InvestigationSession
+public sealed record InvestigationStep(string Message, DateTimeOffset Timestamp);
+
+public sealed class InvestigationSession(int ticketId) : IInvestigationObserver
 {
     private readonly object _sync = new();
+    private readonly List<InvestigationStep> _steps = [];
 
     private TaskCompletionSource<bool>? _approval;
 
     private string _status = "Running";
-    private object? _approvalRequest;
+    private TicketInvestigationResult? _findings;
+    private string? _decision;
     private object? _result;
     private string? _error;
+    private DateTimeOffset? _completedAt;
 
     public Guid Id { get; } = Guid.NewGuid();
+
+    public int TicketId { get; } = ticketId;
+
+    public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
 
     /// <summary>True while the investigation is running or waiting for approval.</summary>
     public bool IsActive
@@ -26,16 +37,34 @@ public sealed class InvestigationSession
         }
     }
 
+    public void OnStep(string message)
+    {
+        lock (_sync)
+        {
+            _steps.Add(new InvestigationStep(message, DateTimeOffset.UtcNow));
+        }
+    }
+
+    public void OnFindings(TicketInvestigationResult investigation)
+    {
+        lock (_sync)
+        {
+            _findings = investigation;
+        }
+    }
+
     public Task<bool> WaitForApprovalAsync(
-        object investigation)
+        TicketInvestigationResult investigation)
     {
         lock (_sync)
         {
             _approval = new TaskCompletionSource<bool>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _approvalRequest = investigation;
+            _findings = investigation;
             _status = "WaitingForApproval";
+            _steps.Add(new InvestigationStep(
+                "Waiting for human approval", DateTimeOffset.UtcNow));
 
             return _approval.Task;
         }
@@ -54,9 +83,12 @@ public sealed class InvestigationSession
             if (!_approval.TrySetResult(approved))
                 return false;
 
-            _approvalRequest = null;
             _approval = null;
+            _decision = approved ? "Approved" : "Rejected";
             _status = "Running";
+            _steps.Add(new InvestigationStep(
+                approved ? "Escalation approved" : "Escalation rejected",
+                DateTimeOffset.UtcNow));
 
             return true;
         }
@@ -67,8 +99,10 @@ public sealed class InvestigationSession
         lock (_sync)
         {
             _result = result;
-            _approvalRequest = null;
             _status = "Completed";
+            _completedAt = DateTimeOffset.UtcNow;
+            _steps.Add(new InvestigationStep(
+                "Investigation completed", _completedAt.Value));
         }
     }
 
@@ -77,8 +111,10 @@ public sealed class InvestigationSession
         lock (_sync)
         {
             _error = exception.Message;
-            _approvalRequest = null;
             _status = "Failed";
+            _completedAt = DateTimeOffset.UtcNow;
+            _steps.Add(new InvestigationStep(
+                "Investigation failed", _completedAt.Value));
         }
     }
 
@@ -89,8 +125,13 @@ public sealed class InvestigationSession
             return new
             {
                 Id,
+                TicketId,
                 Status = _status,
-                ApprovalRequest = _approvalRequest,
+                CreatedAt,
+                CompletedAt = _completedAt,
+                Steps = _steps.ToList(),
+                Findings = _findings,
+                Decision = _decision,
                 Result = _result,
                 Error = _error
             };
