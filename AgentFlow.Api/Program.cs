@@ -1,6 +1,7 @@
 
 using AgentFlow.Agent.Agents;
 using AgentFlow.Api.Investigations;
+using AgentFlow.Api.Models;
 using System.Collections.Concurrent;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -123,5 +124,3 @@ app.MapPost("/api/investigations/{id:guid}/approval",
 
 app.Run();
 
-public record CreateInvestigationRequest(int TicketId);
-public record ApprovalRequest(bool Approved);
