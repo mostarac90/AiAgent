@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 
 namespace AgentFlow.Api.Services;
 
-public sealed class InvestigationService(TicketInvestigationAgent agent)
+public sealed class InvestigationService(AgentProvider agentProvider)
 {
     private readonly ConcurrentDictionary<Guid, InvestigationSession> _sessions = new();
 
@@ -18,6 +18,8 @@ public sealed class InvestigationService(TicketInvestigationAgent agent)
         {
             try
             {
+                var agent = await agentProvider.GetAsync();
+
                 var result = await agent.RunAsync(
                     ticketId,
                     investigation => session.WaitForApprovalAsync(investigation));

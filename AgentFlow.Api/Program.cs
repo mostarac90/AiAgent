@@ -4,7 +4,16 @@ using AgentFlow.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(await TicketInvestigationAgent.CreateAsync());
+// Config: OpenAI:ApiKey (or OPENAI_API_KEY), OpenAI:Model, McpServer:Path (optional).
+var agentOptions = new TicketInvestigationAgentOptions();
+if (builder.Configuration["OpenAI:ApiKey"] is { Length: > 0 } apiKey)
+    agentOptions.OpenAiApiKey = apiKey;
+if (builder.Configuration["OpenAI:Model"] is { Length: > 0 } model)
+    agentOptions.Model = model;
+agentOptions.McpServerPath = builder.Configuration["McpServer:Path"];
+
+builder.Services.AddSingleton(agentOptions);
+builder.Services.AddSingleton<AgentProvider>();
 builder.Services.AddSingleton<InvestigationService>();
 builder.Services.AddOpenApi();
 

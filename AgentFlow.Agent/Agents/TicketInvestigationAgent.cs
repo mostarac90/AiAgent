@@ -16,7 +16,7 @@ public sealed class TicketInvestigationAgentOptions
 
     public string Model { get; set; } = "gpt-5-mini";
 
-    /// <summary>Path to AgentFlow.McpServer.dll. Defaults to the sibling project's Debug build.</summary>
+    /// <summary>Optional path to AgentFlow.McpServer.dll. Falls back to the bundled "mcp-server" folder, then the dev build.</summary>
     public string? McpServerPath { get; set; }
 }
 
@@ -48,16 +48,7 @@ public sealed class TicketInvestigationAgent : IAsyncDisposable
             throw new InvalidOperationException("OPENAI_API_KEY is not configured.");
         }
 
-        var serverPath = options.McpServerPath ?? Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "../../../../AgentFlow.McpServer/bin/Debug/net10.0/AgentFlow.McpServer.dll"));
-
-        if (!File.Exists(serverPath))
-        {
-            throw new FileNotFoundException("MCP server not found.", serverPath);
-        }
-
+        var serverPath = ResolveMcpServerPath(options.McpServerPath);
         var transport = new StdioClientTransport(
             new StdioClientTransportOptions
             {
@@ -91,6 +82,32 @@ public sealed class TicketInvestigationAgent : IAsyncDisposable
             await mcpClient.DisposeAsync();
             throw;
         }
+    }
+
+    /// <summary>
+    /// Finds AgentFlow.McpServer.dll: explicit/configured path, then the copy
+    /// bundled next to the app (deployed), then the sibling project's Debug build (dev).
+    /// </summary>
+    private static string ResolveMcpServerPath(string? configuredPath)
+    {
+        var candidates = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+        {
+            candidates.Add(Path.GetFullPath(configuredPath, AppContext.BaseDirectory));
+        }
+
+        candidates.Add(Path.Combine(
+            AppContext.BaseDirectory, "mcp-server", "AgentFlow.McpServer.dll"));
+
+        candidates.Add(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../AgentFlow.McpServer/bin/Debug/net10.0/AgentFlow.McpServer.dll")));
+
+        var found = candidates.FirstOrDefault(File.Exists);
+
+        return found ?? throw new FileNotFoundException(
+            "MCP server not found. Looked in: " + string.Join("; ", candidates));
     }
 
     /// <summary>

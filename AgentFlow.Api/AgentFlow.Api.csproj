@@ -15,6 +15,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgentFlow.Agent\AgentFlow.Agent.csproj" />
+    <!-- Built with the API, but not referenced as a library: it is launched as a child process. -->
+    <ProjectReference Include="..\AgentFlow.McpServer\AgentFlow.McpServer.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <!-- Bundle the MCP server into <publish>/mcp-server/ so the API can launch it when deployed. -->
+  <Target Name="PublishMcpServer" AfterTargets="Publish">
+    <MSBuild Projects="..\AgentFlow.McpServer\AgentFlow.McpServer.csproj"
+             Targets="Publish"
+             Properties="NoBuild=true;Configuration=$(Configuration);PublishDir=$(PublishDir)mcp-server\" />
+  </Target>
 
 </Project>
