@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { ActiveInvestigations } from './components/ActiveInvestigations';
 import { ApprovalPanel } from './components/ApprovalPanel';
 
 import {
@@ -40,8 +41,8 @@ export default function App() {
   const investigation = investigationQuery.data;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <main className="min-h-screen bg-slate-950 text-white p-8 flex flex-col">
+      <div className="max-w-3xl w-full mx-auto space-y-6 flex-1">
         <header>
           <h1 className="text-4xl font-bold">
             AgentFlow
@@ -85,6 +86,11 @@ export default function App() {
             </p>
           )}
         </section>
+
+        <ActiveInvestigations
+          selectedId={investigationId}
+          onSelect={setInvestigationId}
+        />
 
         {investigationId && (
           <section className="bg-slate-900 rounded-xl p-6 space-y-4">
@@ -152,6 +158,18 @@ export default function App() {
           </section>
         )}
       </div>
+
+      <footer className="mt-12 pt-6 border-t border-slate-800 text-center text-sm text-slate-500">
+        Developed by{' '}
+        <a
+          href="https://www.linkedin.com/in/jasmin-krhan-031a84b1/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-300 hover:text-blue-400 underline-offset-4 hover:underline"
+        >
+          Jasmin Krhan
+        </a>
+      </footer>
     </main>
   );
 }

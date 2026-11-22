@@ -7,13 +7,32 @@ import {
 
 import {
   createInvestigation,
+  getActiveInvestigations,
   getInvestigation,
   submitApproval,
 } from '../api/investigations';
 
+const activeInvestigationsKey = ['investigations', 'active'];
+
 export function useCreateInvestigation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: createInvestigation,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: activeInvestigationsKey,
+      });
+    },
+  });
+}
+
+export function useActiveInvestigations() {
+  return useQuery({
+    queryKey: activeInvestigationsKey,
+    queryFn: getActiveInvestigations,
+    refetchInterval: 3000,
   });
 }
 
@@ -49,9 +68,14 @@ export function useSubmitApproval(investigationId: string) {
       submitApproval(investigationId, { approved }),
 
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['investigation', investigationId],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['investigation', investigationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: activeInvestigationsKey,
+        }),
+      ]);
     },
   });
 }
