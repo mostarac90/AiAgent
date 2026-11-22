@@ -2,11 +2,13 @@
 import {
   useMutation,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query';
 
 import {
   createInvestigation,
   getInvestigation,
+  submitApproval,
 } from '../api/investigations';
 
 export function useCreateInvestigation() {
@@ -35,6 +37,21 @@ export function useInvestigation(id: string | null) {
       }
 
       return 2000;
+    },
+  });
+}
+
+export function useSubmitApproval(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (approved: boolean) =>
+      submitApproval(investigationId, { approved }),
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['investigation', investigationId],
+      });
     },
   });
 }

@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { ApprovalPanel } from './components/ApprovalPanel';
 
 import {
   useCreateInvestigation,
@@ -144,6 +145,9 @@ export default function App() {
                   </p>
                 )}
               </>
+            )}
+            {investigation?.status === 'WaitingForApproval' && (
+              <ApprovalPanel investigationId={investigationId} />
             )}
           </section>
         )}

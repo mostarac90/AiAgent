@@ -5,6 +5,7 @@ import type {
   Investigation,
   CreateInvestigationRequest,
   CreateInvestigationResponse,
+  ApprovalRequest,
 } from '../types/investigation';
 
 export async function createInvestigation(
@@ -27,4 +28,15 @@ export async function getInvestigation(
   );
 
   return response.data;
+}
+
+
+export async function submitApproval(
+  investigationId: string,
+  request: ApprovalRequest
+): Promise<void> {
+  await apiClient.post(
+    `/investigations/${encodeURIComponent(investigationId)}/approval`,
+    request
+  );
 }
