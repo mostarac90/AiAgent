@@ -50,6 +50,11 @@ public static class InvestigationEndpoints
                 });
         });
 
+        // List active investigations (running or waiting for approval)
+        group.MapGet("/", (InvestigationService investigations) =>
+            Results.Ok(investigations.GetActive()
+                .Select(s => s.GetStatus())));
+
         // Get investigation status
         group.MapGet("/{id:guid}", (
             Guid id,

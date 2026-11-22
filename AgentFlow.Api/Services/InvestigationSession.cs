@@ -14,6 +14,18 @@ public sealed class InvestigationSession
 
     public Guid Id { get; } = Guid.NewGuid();
 
+    /// <summary>True while the investigation is running or waiting for approval.</summary>
+    public bool IsActive
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _status is "Running" or "WaitingForApproval";
+            }
+        }
+    }
+
     public Task<bool> WaitForApprovalAsync(
         object investigation)
     {

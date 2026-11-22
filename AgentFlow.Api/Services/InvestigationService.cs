@@ -33,6 +33,10 @@ public sealed class InvestigationService(TicketInvestigationAgent agent)
         return session;
     }
 
+    /// <summary>Investigations that are running or waiting for approval.</summary>
+    public IReadOnlyList<InvestigationSession> GetActive() =>
+        _sessions.Values.Where(s => s.IsActive).ToList();
+
     public InvestigationSession? Get(Guid id) =>
         _sessions.TryGetValue(id, out var session) ? session : null;
 }
